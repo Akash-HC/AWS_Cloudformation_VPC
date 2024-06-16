@@ -1,0 +1,188 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Template to deploy multi-tier architecture using vpc and ec2
+
+#Metadata
+
+Parameters:
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: please enter the Vpc CidrBlock
+
+  PublicSubnetCIDR:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: Please enter the CIDR for the public subnet
+
+  Az:
+    Type: String
+    Default: us-east-1a
+    Description: Please enter the Az of your choice
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: dedicated
+      Tags:
+       - Key: Name 
+         Value: Project-VPC 
+
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: myInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: myInternetGateway
+
+  WebPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PublicSubnetCIDR
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: Web-tier
+
+  ApplicationSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: ApplicationSubnet
+
+  DBSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: DBSubnet
+
+  DBCacheSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: DBCacheSubnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: PublicRouteTable 
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: PrivateRouteTable 
+  
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: myInternetGateway
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 
+        Ref: PublicSubnetCIDR
+      GatewayId:
+        Ref: NATGateway
+
+  PublicSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: 
+        Ref: PublicRouteTable
+      SubnetId: 
+        Ref: WebPublicSubnet
+
+  ApplicationSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: 
+        Ref: PrivateRouteTable
+      SubnetId:
+        Ref: ApplicationSubnet
+        
+  DBCacheSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: 
+        Ref: PrivateRouteTable
+      SubnetId:
+        Ref: DBCacheSubnet
+      
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: { "Fn::GetAtt" : ["NATGatewayEIP", "AllocationId"]}
+      SubnetId: 
+        Ref: WebPublicSubnet
+      Tags:
+        - Key: Name
+          Value: NATGateway
+
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: myInternetGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: NATEIP
+
+  RouteNATGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: 
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: 
+        Ref: NATGateway
