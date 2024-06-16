@@ -1,0 +1,103 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Template to create a VPC with public and private subnet each
+
+#Metadata
+
+Parameters:
+  VpcCIDR:
+    Type: String
+    Description: please enter the Vpc CidrBlock
+
+  PublicSubnetCIDR:
+    Type: String
+    Description: Please enter the CIDR for the public subnet
+
+  PrivateSubnetCIDR:
+    Type: String
+    Description: Please enter the CIDR for the private subnet
+
+  Az:
+    Type: String
+    Description: Please enter the Az of your choice
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: dedicated
+      Tags:
+       - Key: Name 
+         Value: myVPC 
+
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: myInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: myInternetGateway
+
+  myPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PublicSubnetCIDR
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: Public subnet 
+
+  myPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PrivateSubnetCIDR
+      AvailabilityZone: 
+        Ref: Az
+      Tags:
+      - Key: Name
+        Value: Private subnet
+
+  myRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: Route Table 
+     
+  myRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: myInternetGateway
+
+  SubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: 
+        Ref: myRouteTable
+      SubnetId: 
+        Ref: myPublicSubnet
