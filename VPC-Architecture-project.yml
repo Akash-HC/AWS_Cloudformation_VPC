@@ -1,7 +1,11 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Template to deploy multi-tier architecture using vpc and ec2
+Description: Template to deploy multi-tier vpc architecture.
+
+# This template will create a vpc with a public subnet and 3 private subnets. Out of 3 Private subnets,
+# 2 of them are given interent access through NAT gateway which is deployed in public subnet.
+# An IGW is connected to the public subnet. The NAT gateway will access the internet through the IGW. 
 
 #Metadata
 
@@ -15,6 +19,21 @@ Parameters:
     Type: String
     Default: 10.0.1.0/24
     Description: Please enter the CIDR for the public subnet
+
+  ApplicationSubnetCIDR:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: Please enter the CIDR block
+
+  DBSubnetCIDR:
+    Type: String
+    Default: 10.0.3.0/24
+    Description: Please enter the CIDR block
+
+  DBCacheSubnetCIDR:
+    Type: String
+    Default: 10.0.4.0/24
+    Description: Please enter the CIDR block
 
   Az:
     Type: String
@@ -67,7 +86,8 @@ Resources:
     Properties:
       VpcId: 
         Ref: myVPC
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: 
+        Ref: ApplicationSubnetCIDR
       AvailabilityZone: 
         Ref: Az
       Tags:
@@ -79,7 +99,8 @@ Resources:
     Properties:
       VpcId: 
         Ref: myVPC
-      CidrBlock: 10.0.3.0/24
+      CidrBlock: 
+        Ref: DBSubnetCIDR
       AvailabilityZone: 
         Ref: Az
       Tags:
@@ -91,7 +112,8 @@ Resources:
     Properties:
       VpcId: 
         Ref: myVPC
-      CidrBlock: 10.0.4.0/24
+      CidrBlock: 
+        Ref: DBCacheSubnetCIDR
       AvailabilityZone: 
         Ref: Az
       Tags:
